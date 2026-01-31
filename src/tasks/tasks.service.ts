@@ -1,32 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { ITask } from 'types/tasks';
 import { PrismaService } from '../prisma/prisma.service';
 import { TaskCreateDto } from './dto/task.create.dto';
+import { Task } from '../generated/prisma/client';
 
 @Injectable()
 export class TasksService {
-  private tasks: ITask[] = [
-    { id: 1, title: 'Task 01', text: 'Task 01 text' },
-    { id: 2, title: 'Task 02', text: 'Task 02 text' },
-  ];
-
   constructor(private prisma: PrismaService) {}
 
-  getAll(): ITask[] {
-    return this.tasks;
+  getAll(): Promise<Task[]> {
+    return this.prisma.task.findMany();
   }
 
-  createTask(task: TaskCreateDto) {
-    void this.prisma.task.create({
+  async createTask(task: TaskCreateDto) {
+    const result = await this.prisma.task.create({
       data: {
         title: task.title,
         user: { connect: { id: task.userId } },
       },
     });
-    return this.tasks;
+    return result;
   }
 
   deleteById(taskId: number) {
-    return this.tasks.filter((task) => task.id !== taskId);
+    return this.prisma.task.delete({ where: { id: taskId } });
   }
 }
