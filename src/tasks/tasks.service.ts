@@ -1,27 +1,65 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TaskCreateDto } from './dto/task.create.dto';
 import { Task } from '../generated/prisma/client';
+import { QueryTaskDto } from 'src/tasks/dto/query-task.dto';
+import { CreateTaskDto } from 'src/tasks/dto/create-task.dto';
+import { UpdateTaskDto } from 'src/tasks/dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  getAll(): Promise<Task[]> {
-    return this.prisma.task.findMany();
+  async getAll(query: QueryTaskDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    return this.prisma.task.findMany({
+      where: {
+        completed: query.completed,
+      },
+      orderBy: {
+        [query.sortBy ?? 'createAt']: query.order ?? 'desc',
+      },
+      take: limit,
+      skip,
+    });
   }
 
-  async createTask(task: TaskCreateDto) {
-    const result = await this.prisma.task.create({
+  async findOne(id: number) {
+    const task = await this.prisma.task.findUnique({ where: { id } });
+    if (!task) throw new NotFoundException('Задача с таким id не найдена');
+    return task;
+  }
+
+  async createTask(dto: CreateTaskDto) {
+    const data = {
+      title: dto.title,
+      completed: dto.completed ?? false,
+      userId: dto.userId,
+    };
+
+    return this.prisma.task.create({ data });
+  }
+
+  async update(id: number, dto: UpdateTaskDto) {
+    const exists = await this.prisma.task.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('Задача не найдена');
+
+    return this.prisma.task.update({
+      where: { id },
       data: {
-        title: task.title,
-        user: { connect: { id: task.userId } },
+        title: dto.title,
+        completed: dto.completed,
       },
     });
-    return result;
   }
 
-  deleteById(taskId: number) {
-    return this.prisma.task.delete({ where: { id: taskId } });
+  async deleteById(id: number) {
+    const exists = await this.prisma.task.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('Задача не найдена');
+
+    await this.prisma.task.delete({ where: { id: id } });
+    return { success: true };
   }
 }

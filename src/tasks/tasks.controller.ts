@@ -1,20 +1,41 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { type TaskCreateDto } from './dto/task.create.dto';
 import { Task } from '../generated/prisma/client';
+import { QueryTaskDto } from 'src/tasks/dto/query-task.dto';
+import { CreateTaskDto } from 'src/tasks/dto/create-task.dto';
+import { UpdateTaskDto } from 'src/tasks/dto/update-task.dto';
 
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
-  getAll(): Promise<Task[]> {
-    return this.tasksService.getAll();
+  getAll(@Query() query: QueryTaskDto) {
+    return this.tasksService.getAll(query);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: number) {
+    return this.tasksService.findOne(id);
   }
 
   @Post()
-  createTask(@Body() body: TaskCreateDto): Promise<Task> {
-    return this.tasksService.createTask(body);
+  createTask(@Body() dto: CreateTaskDto) {
+    return this.tasksService.createTask(dto);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: number, @Body() dto: UpdateTaskDto) {
+    return this.tasksService.update(id, dto);
   }
 
   @Delete(':taskId')
