@@ -19,7 +19,7 @@ export class TasksService {
         completed: query.completed,
       },
       orderBy: {
-        [query.sortBy ?? 'createAt']: query.order ?? 'desc',
+        [query.sortBy ?? 'createdAt']: query.order ?? 'desc',
       },
       take: limit,
       skip,

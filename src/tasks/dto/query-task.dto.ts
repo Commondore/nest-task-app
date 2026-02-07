@@ -16,10 +16,10 @@ export class QueryTaskDto {
   limit?: number = 20;
 
   @IsOptional()
-  @IsIn(['createAt', 'title'], {
-    message: 'sortBy должен содержать createAt или title',
+  @IsIn(['createdAt', 'title'], {
+    message: 'sortBy должен содержать createdAt или title',
   })
-  sortBy?: 'createAt' | 'title' = 'createAt';
+  sortBy?: 'createdAt' | 'title' = 'createdAt';
 
   @IsOptional()
   @IsIn(['asc', 'desc'], {
