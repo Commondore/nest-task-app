@@ -8,6 +8,7 @@ import { RegisterDto } from 'src/auth/dto/register.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from 'src/auth/dto/login.dto';
+import { UserResponseDto } from './dto/reponse.dto';
 
 @Injectable()
 export class AuthService {
@@ -39,7 +40,7 @@ export class AuthService {
 
     const token = this.generateToken(user.id, user.name);
 
-    return { token, user };
+    return { token, user: new UserResponseDto(user) };
   }
 
   async login(dto: LoginDto) {
@@ -65,7 +66,7 @@ export class AuthService {
       userWithPassword.name,
     );
 
-    return { token, user: userWithPassword };
+    return { token, user: new UserResponseDto(userWithPassword) };
   }
 
   private generateToken(userId: number, username: string): string {
