@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { QueryTaskDto } from 'src/tasks/dto/query-task.dto';
@@ -15,6 +16,7 @@ import { UpdateTaskDto } from 'src/tasks/dto/update-task.dto';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Task } from 'src/prisma/prisma-client';
 import { title } from 'process';
+import { JwtGuard } from 'src/auth/guard/jwt.guard';
 
 @ApiTags('Tasks')
 @Controller('tasks')
@@ -50,16 +52,19 @@ export class TasksController {
     return this.tasksService.findOne(id);
   }
 
+  @UseGuards(JwtGuard)
   @Post()
   createTask(@Body() dto: CreateTaskDto) {
     return this.tasksService.createTask(dto);
   }
 
+  @UseGuards(JwtGuard)
   @Patch(':id')
   update(@Param('id') id: number, @Body() dto: UpdateTaskDto) {
     return this.tasksService.update(id, dto);
   }
 
+  @UseGuards(JwtGuard)
   @Delete(':taskId')
   deleteTask(@Param('taskId') taskId: number) {
     return this.tasksService.deleteById(taskId);
