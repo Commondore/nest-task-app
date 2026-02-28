@@ -18,16 +18,23 @@ export class AuthController {
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { token, user } = await this.authService.register(dto);
+    const tokens = await this.authService.register(dto);
 
-    res.cookie('access_token', token, {
+    res.cookie('access_token', tokens.accessToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 60,
+      maxAge: 1000 * 60 * 20,
     });
 
-    return { success: true, user };
+    res.cookie('refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 7,
+    });
+
+    return { success: true };
   }
 
   @Post('login')
@@ -35,16 +42,23 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { token, user } = await this.authService.login(dto);
+    const tokens = await this.authService.login(dto);
 
-    res.cookie('access_token', token, {
+    res.cookie('access_token', tokens.accessToken, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 60,
+      maxAge: 1000 * 60 * 20,
     });
 
-    return { success: true, user };
+    res.cookie('refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 7,
+    });
+
+    return { success: true };
   }
 
   @Post('logout')

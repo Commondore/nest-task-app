@@ -15,12 +15,14 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  tasks     Task[]
-  createdAt DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  name         String
+  role         Role     @default(USER)
+  refreshToken String?
+  tasks        Task[]
+  createdAt    DateTime @default(now())
 }
 
 model Task {
@@ -30,4 +32,9 @@ model Task {
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
 }

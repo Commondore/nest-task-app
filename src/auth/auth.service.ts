@@ -8,13 +8,21 @@ import { RegisterDto } from 'src/auth/dto/register.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from 'src/auth/dto/login.dto';
-import { UserResponseDto } from './dto/reponse.dto';
+import { ConfigService } from '@nestjs/config';
+import { Role } from '../generated/prisma/enums';
+import { User } from '../generated/prisma/client';
+
+type Tokens = {
+  accessToken: string;
+  refreshToken: string;
+};
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -38,9 +46,11 @@ export class AuthService {
       },
     });
 
-    const token = this.generateToken(user.id, user.name);
+    const tokens = this.generateTokens(user);
 
-    return { token, user: new UserResponseDto(user) };
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
   }
 
   async login(dto: LoginDto) {
@@ -61,15 +71,47 @@ export class AuthService {
       throw new UnauthorizedException('Неверный пароль');
     }
 
-    const token = this.generateToken(
-      userWithPassword.id,
-      userWithPassword.name,
-    );
+    const tokens = this.generateTokens(userWithPassword);
 
-    return { token, user: new UserResponseDto(userWithPassword) };
+    await this.saveRefreshToken(userWithPassword.id, tokens.refreshToken);
+
+    return tokens;
   }
 
-  private generateToken(userId: number, username: string): string {
-    return this.jwtService.sign({ id: userId, name: username });
+  private generateToken(userId: number, username: string, role: Role): string {
+    return this.jwtService.sign(
+      { id: userId, name: username, role },
+      { expiresIn: '20m' },
+    );
+  }
+
+  private generateRefreshToken(userId: number, username: string, role: Role) {
+    return this.jwtService.sign(
+      { id: userId, name: username, role },
+      { expiresIn: '7d', secret: this.config.get('JWT_REFRESH_SECRET') },
+    );
+  }
+
+  private generateTokens(user: Pick<User, 'id' | 'name' | 'role'>): Tokens {
+    const accessToken = this.generateToken(user.id, user.name, user.role);
+    const refreshToken = this.generateRefreshToken(
+      user.id,
+      user.name,
+      user.role,
+    );
+
+    return { accessToken, refreshToken };
+  }
+
+  private async saveRefreshToken(
+    userId: User['id'],
+    refreshToken: string,
+  ): Promise<void> {
+    const hash = await bcrypt.hash(refreshToken, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: hash },
+    });
   }
 }
