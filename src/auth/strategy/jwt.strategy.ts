@@ -7,7 +7,12 @@ import { ConfigService } from '@nestjs/config';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private config: ConfigService) {
     super({
-      jwtFromRequest: (req) => req?.cookies?.[config.get('COOKIE_NAME')],
+      jwtFromRequest: (req) =>
+        req?.cookies?.[
+          config.get<string>('COOKIE_ACCESS_NAME') ??
+            config.get<string>('COOKIE_NAME') ??
+            'access_token'
+        ],
       ignoreExpiration: false,
       secretOrKey: config.get('JWT_SECRET')!,
     });

@@ -12,9 +12,15 @@ import { ConfigService } from '@nestjs/config';
 import { Role } from '../generated/prisma/enums';
 import { User } from '../generated/prisma/client';
 
-type Tokens = {
+export type Tokens = {
   accessToken: string;
   refreshToken: string;
+};
+
+type AuthJwtPayload = {
+  sub: User['id'];
+  name: string;
+  role: Role;
 };
 
 @Injectable()
@@ -78,17 +84,47 @@ export class AuthService {
     return tokens;
   }
 
+  async logout(userId: number) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+  }
+
+  async refresh(refreshToken: string): Promise<Tokens> {
+    const payload = this.verifyRefreshToken(refreshToken);
+    const userId = payload.sub;
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Доступ запрещен');
+    }
+
+    const isValid = await bcrypt.compare(refreshToken, user.refreshToken);
+    if (!isValid) {
+      throw new UnauthorizedException('Доступ запрещен не валидный токен');
+    }
+
+    const tokens = this.generateTokens(user);
+    await this.saveRefreshToken(userId, tokens.refreshToken);
+
+    return tokens;
+  }
+
   private generateToken(userId: number, username: string, role: Role): string {
     return this.jwtService.sign(
-      { id: userId, name: username, role },
+      { sub: userId, name: username, role },
       { expiresIn: '20m' },
     );
   }
 
   private generateRefreshToken(userId: number, username: string, role: Role) {
     return this.jwtService.sign(
-      { id: userId, name: username, role },
-      { expiresIn: '7d', secret: this.config.get('JWT_REFRESH_SECRET') },
+      { sub: userId, name: username, role },
+      {
+        expiresIn: '7d',
+        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      },
     );
   }
 
@@ -113,5 +149,15 @@ export class AuthService {
       where: { id: userId },
       data: { refreshToken: hash },
     });
+  }
+
+  private verifyRefreshToken(refreshToken: string): AuthJwtPayload {
+    try {
+      return this.jwtService.verify<AuthJwtPayload>(refreshToken, {
+        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Недействительный refresh token');
+    }
   }
 }
