@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { CsrfGuard } from 'src/auth/guard/csrf.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +24,7 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  app.useGlobalGuards(new CsrfGuard());
 
   const config = new DocumentBuilder()
     .setTitle('Task Manager API')

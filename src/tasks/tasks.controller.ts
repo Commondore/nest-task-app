@@ -17,6 +17,9 @@ import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Task } from 'src/prisma/prisma-client';
 import { title } from 'process';
 import { JwtGuard } from 'src/auth/guard/jwt.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { RolesGuard } from 'src/auth/guard/roles.guard';
+import { Role } from 'src/generated/prisma/enums';
 
 @ApiTags('Tasks')
 @Controller('tasks')
@@ -64,7 +67,8 @@ export class TasksController {
     return this.tasksService.update(id, dto);
   }
 
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':taskId')
   deleteTask(@Param('taskId') taskId: number) {
     return this.tasksService.deleteById(taskId);

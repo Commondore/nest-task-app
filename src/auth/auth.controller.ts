@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   Req,
   Res,
@@ -11,6 +12,7 @@ import { AuthService, type Tokens } from './auth.service';
 import { RegisterDto } from 'src/auth/dto/register.dto';
 import type { CookieOptions, Request, Response } from 'express';
 import { LoginDto } from 'src/auth/dto/login.dto';
+import { randomUUID } from 'crypto';
 
 const ACCESS_TOKEN_MAX_AGE = 1000 * 60 * 20;
 const REFRESH_TOKEN_MAX_AGE = 1000 * 60 * 60 * 24 * 7;
@@ -67,6 +69,15 @@ export class AuthController {
     return { success: true };
   }
 
+  @Get('csrf')
+  getCsrf(@Res({ passthrough: true }) res: Response): { csrfToken: string } {
+    const token = randomUUID();
+
+    res.cookie('csrf_token', token, this.getCsrfCookieOptions());
+
+    return { csrfToken: token };
+  }
+
   private setAuthCookies(res: Response, tokens: Tokens): void {
     const cookieOptions = this.getCookieOptions();
 
@@ -95,6 +106,17 @@ export class AuthController {
       httpOnly: true,
       secure: this.config.get<string>('COOKIE_SECURE') === 'true',
       sameSite: sameSite === 'strict' || sameSite === 'none' ? sameSite : 'lax',
+    };
+  }
+
+  private getCsrfCookieOptions(): CookieOptions {
+    const sameSite = this.config.get<string>('COOKIE_SAME_SITE');
+
+    return {
+      httpOnly: false,
+      secure: this.config.get<string>('COOKIE_SECURE') === 'true',
+      sameSite: sameSite === 'strict' || sameSite === 'none' ? sameSite : 'lax',
+      maxAge: 1000 * 60 * 60,
     };
   }
 

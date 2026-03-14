@@ -1,7 +1,7 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
+import type { JwtUser } from 'src/auth/types';
 
-export type JwtUser = { userId: number };
 type RequestWithUser = Request & { user?: JwtUser };
 
 export const CurrentUser = createParamDecorator(
