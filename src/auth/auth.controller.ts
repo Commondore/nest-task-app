@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Req,
   Res,
@@ -13,10 +15,17 @@ import { RegisterDto } from 'src/auth/dto/register.dto';
 import type { CookieOptions, Request, Response } from 'express';
 import { LoginDto } from 'src/auth/dto/login.dto';
 import { randomUUID } from 'crypto';
+import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  AuthResponseDto,
+  CsrfResponseDto,
+  SuccessResponseDto,
+} from 'src/auth/dto/response.dto';
 
 const ACCESS_TOKEN_MAX_AGE = 1000 * 60 * 20;
 const REFRESH_TOKEN_MAX_AGE = 1000 * 60 * 60 * 24 * 7;
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -25,38 +34,57 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiCreatedResponse({
+    description: 'Пользователь зарегистрирован',
+    type: AuthResponseDto,
+  })
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.authService.register(dto);
-    this.setAuthCookies(res, tokens);
+  ): Promise<AuthResponseDto> {
+    const authResult = await this.authService.register(dto);
+    this.setAuthCookies(res, authResult);
 
-    return { success: true };
+    return new AuthResponseDto(authResult.user);
   }
 
   @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: 'Пользователь авторизован',
+    type: AuthResponseDto,
+  })
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.authService.login(dto);
-    this.setAuthCookies(res, tokens);
+  ): Promise<AuthResponseDto> {
+    const authResult = await this.authService.login(dto);
+    this.setAuthCookies(res, authResult);
 
-    return { success: true };
+    return new AuthResponseDto(authResult.user);
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response): { success: true } {
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: 'Пользователь вышел из системы',
+    type: SuccessResponseDto,
+  })
+  logout(@Res({ passthrough: true }) res: Response): SuccessResponseDto {
     this.clearAuthCookies(res);
-    return { success: true };
+    return new SuccessResponseDto();
   }
 
   @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: 'Токены обновлены',
+    type: SuccessResponseDto,
+  })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<SuccessResponseDto> {
     const refreshToken = this.getCookieValue(req, this.getRefreshCookieName());
 
     if (!refreshToken) {
@@ -66,16 +94,20 @@ export class AuthController {
     const tokens = await this.authService.refresh(refreshToken);
     this.setAuthCookies(res, tokens);
 
-    return { success: true };
+    return new SuccessResponseDto();
   }
 
   @Get('csrf')
-  getCsrf(@Res({ passthrough: true }) res: Response): { csrfToken: string } {
+  @ApiOkResponse({
+    description: 'CSRF token',
+    type: CsrfResponseDto,
+  })
+  getCsrf(@Res({ passthrough: true }) res: Response): CsrfResponseDto {
     const token = randomUUID();
 
     res.cookie('csrf_token', token, this.getCsrfCookieOptions());
 
-    return { csrfToken: token };
+    return new CsrfResponseDto(token);
   }
 
   private setAuthCookies(res: Response, tokens: Tokens): void {

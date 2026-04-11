@@ -17,6 +17,12 @@ export type Tokens = {
   refreshToken: string;
 };
 
+type AuthUser = Pick<User, 'id' | 'email' | 'name'>;
+
+export type AuthResult = Tokens & {
+  user: AuthUser;
+};
+
 type AuthJwtPayload = {
   sub: User['id'];
   name: string;
@@ -31,7 +37,7 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto): Promise<AuthResult> {
     const exists = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -56,10 +62,10 @@ export class AuthService {
 
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
-    return tokens;
+    return { ...tokens, user: this.toAuthUser(user) };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto): Promise<AuthResult> {
     const userWithPassword = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -81,7 +87,7 @@ export class AuthService {
 
     await this.saveRefreshToken(userWithPassword.id, tokens.refreshToken);
 
-    return tokens;
+    return { ...tokens, user: this.toAuthUser(userWithPassword) };
   }
 
   async logout(userId: number) {
@@ -137,6 +143,14 @@ export class AuthService {
     );
 
     return { accessToken, refreshToken };
+  }
+
+  private toAuthUser(user: AuthUser): AuthUser {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    };
   }
 
   private async saveRefreshToken(
